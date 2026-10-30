@@ -1,0 +1,84 @@
+name: mcp-probe
+description: Audit a remote MCP server over Streamable HTTP and add the report to the job summary.
+author: Dmitrii Maslennikov
+branding:
+  icon: check-circle
+  color: blue
+
+inputs:
+  url:
+    description: The MCP endpoint, e.g. https://example.com/mcp
+    required: true
+  headers:
+    description: 'HTTP headers for every request, one "Name: value" per line'
+    required: false
+    default: ''
+  scenario:
+    description: YAML or JSON scenario file, relative to the workspace
+    required: false
+    default: ''
+  fail-on:
+    description: 'Fail the step on findings at or above: error, warn, info or never'
+    required: false
+    default: error
+  json:
+    description: Write the JSON report to this path
+    required: false
+    default: ''
+  md:
+    description: Write the Markdown report to this path (it is added to the job summary either way)
+    required: false
+    default: ''
+
+outputs:
+  exit-code:
+    description: 'The exit code of mcp-probe: 0 ok, 1 findings at or above fail-on, 2 no connection or bad input'
+    value: ${{ steps.probe.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Build mcp-probe
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        npm ci --ignore-scripts --no-audit --no-fund
+        npm run build
+
+    - name: Probe the MCP server
+      id: probe
+      shell: bash
+      env:
+        INPUT_URL: ${{ inputs.url }}
+        INPUT_HEADERS: ${{ inputs.headers }}
+        INPUT_SCENARIO: ${{ inputs.scenario }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_JSON: ${{ inputs.json }}
+        INPUT_MD: ${{ inputs.md }}
+      run: |
+        args=("$INPUT_URL" --fail-on "$INPUT_FAIL_ON")
+        while IFS= read -r line || [ -n "$line" ]; do
+          line="${line%$'\r'}"
+          [ -z "${line//[[:space:]]/}" ] && continue
+          args+=(--header "$line")
+        done <<< "$INPUT_HEADERS"
+        [ -n "$INPUT_SCENARIO" ] && args+=(--scenario "$INPUT_SCENARIO")
+        [ -n "$INPUT_JSON" ] && args+=(--json "$INPUT_JSON")
+        md="${INPUT_MD:-$RUNNER_TEMP/mcp-probe-report.md}"
+        args+=(--md "$md")
+
+        set +e
+        node "$GITHUB_ACTION_PATH/dist/cli.js" "${args[@]}"
+        code=$?
+        set -e
+
+        if [ -s "$md" ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+          cat "$md" >> "$GITHUB_STEP_SUMMARY"
+        fi
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        exit "$code"

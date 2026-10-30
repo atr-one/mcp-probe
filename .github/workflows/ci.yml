@@ -22,3 +22,49 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm test
+
+  action:
+    # runs action.yml from this checkout against the mock server, so the action itself is tested
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Start the mock server
+        run: |
+          nohup node test/fixtures/mock-server.mjs 8765 > mock.log 2>&1 &
+          for i in $(seq 1 50); do
+            if (echo > /dev/tcp/127.0.0.1/8765) 2>/dev/null; then exit 0; fi
+            sleep 0.2
+          done
+          cat mock.log
+          exit 1
+      - name: Run the action
+        id: probe
+        uses: ./
+        with:
+          url: http://127.0.0.1:8765/mcp
+          headers: |
+            X-Probe-Test: 1
+            User-Agent: mcp-probe-ci
+          scenario: examples/probe.yaml
+          fail-on: never
+          json: action-report.json
+          md: action-report.md
+      - name: Check the reports and the output
+        run: |
+          test "${{ steps.probe.outputs.exit-code }}" = 0
+          node -e "const r = require('./action-report.json'); if (!r.connected || r.tools.count !== 2 || r.scenarios.some((s) => !s.passed)) process.exit(1)"
+          grep -q '^# mcp-probe report' action-report.md
+      - name: Run the action where it must fail
+        id: failing
+        continue-on-error: true
+        uses: ./
+        with:
+          url: http://127.0.0.1:8765/mcp
+          md: failing-report.md
+      - name: Check that it failed with exit 1
+        run: |
+          test "${{ steps.failing.outcome }}" = failure
+          grep -q '(exit 1)' failing-report.md

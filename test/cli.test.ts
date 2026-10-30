@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { parse as parseYaml } from 'yaml';
 import { UsageError, parseArgs, parseDuration, parseHeader } from '../src/args.js';
 import { CHECKS } from '../src/checks/registry.js';
 import { parseAuthParams } from '../src/checks/handshake.js';
@@ -110,6 +111,13 @@ describe('project metadata', () => {
 
   it('documents every check id in the README', () => {
     const missing = Object.keys(CHECKS).filter((id) => !readme.includes('`' + id + '`'));
+    expect(missing).toEqual([]);
+  });
+
+  it('documents every input of the GitHub Action in the README', () => {
+    const action = parseYaml(readFileSync(new URL('../action.yml', import.meta.url), 'utf8')) as { inputs: Record<string, unknown>; runs: { using: string } };
+    expect(action.runs.using).toBe('composite');
+    const missing = Object.keys(action.inputs).filter((name) => !readme.includes('| `' + name + '` |'));
     expect(missing).toEqual([]);
   });
 });

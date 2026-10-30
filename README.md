@@ -294,6 +294,46 @@ The validator for `outputSchema` supports a subset of JSON Schema: `type` (inclu
 
 ## Use in CI
 
+### GitHub Action
+
+The repository is also a GitHub Action. It sets up Node.js 22, builds mcp-probe from the tagged source, runs it and appends the Markdown report to the job summary.
+
+```yaml
+# .github/workflows/mcp.yml
+name: MCP server check
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * *"
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4   # only needed for a scenario file from the repository
+      - uses: atr-one/mcp-probe@v0.2.0
+        with:
+          url: https://staging.example.com/mcp
+          headers: |
+            Authorization: Bearer ${{ secrets.MCP_TOKEN }}
+          scenario: probe.yaml
+          fail-on: error
+          json: mcp-report.json
+```
+
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `url` | (required) | The MCP endpoint. |
+| `headers` | | HTTP headers, one `Name: value` per line; empty lines are skipped. |
+| `scenario` | | Scenario file, relative to the workspace. |
+| `fail-on` | `error` | Fail the step on findings at or above `error`, `warn`, `info`, or `never`. |
+| `json` | | Write the JSON report to this path. |
+| `md` | | Write the Markdown report to this path. The report goes to the job summary either way. |
+
+The output `exit-code` holds the exit code of mcp-probe (see the table above); the step fails on 1 and 2. The action runs `actions/setup-node`, so later steps in the same job see Node.js 22 unless they set up their own version.
+
+### With npx
+
 ```yaml
 # .github/workflows/mcp.yml
 name: MCP server check
