@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## 0.2.0 - 2026-10-30
+
+- GitHub Action: `action.yml` at the repository root, used as `uses: atr-one/mcp-probe@v0.2.0`. Inputs `url`, `headers` (one `Name: value` per line), `scenario`, `fail-on`, `baseline`, `fail-on-new`, `json`, `md`; output `exit-code`. It builds mcp-probe from the tagged source and appends the Markdown report to the job summary. CI runs the action against the mock server.
+- `--baseline <file>` compares the run with an earlier JSON report: new and gone findings (matched by check id and subject), and the deltas of estimated context tokens, tool count and `tools/list` p50. Shown in the console and Markdown reports.
+- `--fail-on-new`: with `--baseline`, only new findings at or above `--fail-on` lead to exit 1.
+- Library: `compareReports(previous, current)`, `loadReport(file)`, `exitCodeForNew(...)` and `resultCode(...)`; `formatConsole` and `formatMarkdown` take `{ comparison, failOnNew }`.
+- JSON report schema: `schema/report.schema.json` (JSON Schema 2020-12) describes the report with `schemaVersion: 1`, is shipped in the package as `mcp-probe/schema/report.schema.json`, and is checked by a test against a real report from the mock server.
+
 ## 0.1.0 - 2026-10-30
 
 First release.

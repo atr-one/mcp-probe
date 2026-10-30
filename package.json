@@ -1,6 +1,6 @@
 {
   "name": "mcp-probe",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Audit a remote MCP server over Streamable HTTP: handshake, tool catalog lint, context cost, latency, scenarios and error contract.",
   "license": "MIT",
   "author": "Dmitrii Maslennikov",
@@ -15,10 +15,12 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./schema/report.schema.json": "./schema/report.schema.json",
     "./package.json": "./package.json"
   },
   "files": [
     "dist",
+    "schema",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

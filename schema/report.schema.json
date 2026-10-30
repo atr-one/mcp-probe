@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/atr-one/mcp-probe/main/schema/report.schema.json",
+  "title": "mcp-probe report",
+  "description": "The JSON report written by mcp-probe --json (schemaVersion 1). New optional fields may be added without a change of schemaVersion; a removed, renamed or redefined field raises it.",
+  "type": "object",
+  "required": ["schemaVersion", "probe", "url", "startedAt", "durationMs", "connected", "tools", "latency", "scenarios", "findings", "summary"],
+  "properties": {
+    "schemaVersion": { "const": 1, "description": "Version of this report format." },
+    "probe": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "mcp-probe" },
+        "version": { "type": "string", "description": "Version of mcp-probe that wrote the report." }
+      }
+    },
+    "url": { "type": "string", "description": "The probed endpoint." },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "connected": { "type": "boolean", "description": "False when no HTTP answer could be had at all (DNS, TLS, refused, timeout)." },
+    "server": {
+      "type": "object",
+      "description": "Present once initialize was answered with a result.",
+      "required": ["sessionId"],
+      "properties": {
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "version": { "type": "string" },
+        "protocolVersion": { "type": "string" },
+        "capabilities": { "type": "object" },
+        "instructionsChars": { "type": "integer", "minimum": 0 },
+        "sessionId": { "type": "boolean", "description": "Whether the server issued an Mcp-Session-Id." },
+        "transport": { "enum": ["json", "sse"], "description": "How the server answered initialize." }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "required": ["count", "names"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "names": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "cost": {
+      "type": "object",
+      "description": "Estimated context cost of the tool catalog; absent when tools/list failed or the cost group was skipped.",
+      "required": ["chars", "tokens", "wireChars", "budget", "instructionsTokens", "heaviest", "perTool"],
+      "properties": {
+        "chars": { "type": "integer", "minimum": 0, "description": "Characters of name, description and inputSchema of every tool." },
+        "tokens": { "type": "integer", "minimum": 0, "description": "Estimated tokens of the same." },
+        "wireChars": { "type": "integer", "minimum": 0, "description": "Characters of the whole tools/list payload." },
+        "budget": { "type": "number", "minimum": 0 },
+        "instructionsTokens": { "type": "integer", "minimum": 0 },
+        "heaviest": {
+          "type": "array",
+          "description": "The five heaviest tools.",
+          "items": {
+            "type": "object",
+            "required": ["name", "chars", "tokens"],
+            "properties": {
+              "name": { "type": "string" },
+              "chars": { "type": "integer", "minimum": 0 },
+              "tokens": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "perTool": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "chars", "tokens"],
+            "properties": {
+              "name": { "type": "string" },
+              "chars": { "type": "integer", "minimum": 0 },
+              "tokens": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "latency": {
+      "type": "array",
+      "description": "Per protocol method, in milliseconds (nearest-rank percentiles).",
+      "items": {
+        "type": "object",
+        "required": ["method", "count", "p50", "p95", "min", "max"],
+        "properties": {
+          "method": { "type": "string" },
+          "count": { "type": "integer", "minimum": 1 },
+          "p50": { "type": "integer", "minimum": 0 },
+          "p95": { "type": "integer", "minimum": 0 },
+          "min": { "type": "integer", "minimum": 0 },
+          "max": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "tool", "passed", "failures"],
+        "properties": {
+          "name": { "type": "string" },
+          "tool": { "type": "string" },
+          "passed": { "type": "boolean" },
+          "ms": { "type": "integer", "minimum": 0 },
+          "isError": { "type": "boolean" },
+          "failures": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "resources": { "type": "integer", "minimum": 0, "description": "Number of resources; present when the server advertises them." },
+    "prompts": { "type": "integer", "minimum": 0, "description": "Number of prompts; present when the server advertises them." },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "message", "hint"],
+        "properties": {
+          "id": { "type": "string", "description": "Stable check id, e.g. tools.name_invalid; mcp-probe --list-checks prints them all." },
+          "severity": { "enum": ["error", "warn", "info"] },
+          "message": { "type": "string" },
+          "hint": { "type": "string", "description": "How to fix it." },
+          "subject": { "type": "string", "description": "The tool, resource, prompt, scenario or method the finding is about." }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Number of findings per severity.",
+      "required": ["error", "warn", "info"],
+      "properties": {
+        "error": { "type": "integer", "minimum": 0 },
+        "warn": { "type": "integer", "minimum": 0 },
+        "info": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

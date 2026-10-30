@@ -66,7 +66,7 @@ Real output against the test server in this repository (`npm run mock`, which an
 
 ```text
 $ npx mcp-probe http://127.0.0.1:8765/mcp --scenario examples/probe.yaml
-mcp-probe 0.1.0  http://127.0.0.1:8765/mcp
+mcp-probe 0.2.0  http://127.0.0.1:8765/mcp
 
   Server    mock-weather 1.0.0 (protocol 2025-06-18, SSE answers, session id)
   Tools     2, ~154 tokens in context (budget 8,000)
@@ -356,7 +356,7 @@ jobs:
           node-version: 22
       - name: Probe the MCP server
         run: >
-          npx --yes github:atr-one/mcp-probe#v0.1.0 https://staging.example.com/mcp
+          npx --yes github:atr-one/mcp-probe#v0.2.0 https://staging.example.com/mcp
           --header "Authorization: Bearer ${{ secrets.MCP_TOKEN }}"
           --scenario probe.yaml
           --fail-on error
@@ -434,7 +434,7 @@ for (const f of report.findings) console.log(f.severity, f.id, f.subject ?? '', 
 process.exitCode = exitCode(report, 'error');
 ```
 
-`probe()` does not throw for server-side problems; they become findings. It throws only for a URL that is not http(s). The report object (also what `--json` writes) has `connected`, `server`, `tools`, `cost`, `latency`, `scenarios`, `resources`, `prompts`, `findings` and `summary`; see `src/types.ts`.
+`probe()` does not throw for server-side problems; they become findings. It throws only for a URL that is not http(s). The report object (also what `--json` writes) has `schemaVersion`, `connected`, `server`, `tools`, `cost`, `latency`, `scenarios`, `resources`, `prompts`, `findings` and `summary`; see `src/types.ts` and the JSON report section below.
 
 The parts are exported too: `McpClient` (the transport), `lintTools`, `catalogCost`, `validate` and `lintSchema` (the JSON Schema subset), `estimateTokens`, `parseSse`, `loadScenarios`, `formatMarkdown`, `formatJson` and `CHECKS` (every check id with its severity, title and hint).
 
@@ -448,6 +448,10 @@ const current = await probe('https://example.com/mcp');
 const { newFindings, goneFindings, tokens } = compareReports(previous, current);
 console.log(`${newFindings.length} new, ${goneFindings.length} gone, tokens ${tokens.delta ?? 'n/a'}`);
 ```
+
+## JSON report
+
+The report written by `--json` carries `schemaVersion: 1` and is described by [`schema/report.schema.json`](schema/report.schema.json) (JSON Schema 2020-12). The schema ships with the package, as `mcp-probe/schema/report.schema.json`, for tools that read the reports. New optional fields may be added without a change of `schemaVersion`; a field that is removed, renamed or changes meaning raises it. A test validates a real report from the mock server against the schema, with every declared object closed to undeclared fields, so the schema and `src/types.ts` stay in step.
 
 ## Development
 
