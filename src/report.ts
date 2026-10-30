@@ -1,6 +1,21 @@
+import { exitCodeForNew, type Delta, type ReportComparison } from './compare.js';
 import { SEVERITY_RANK, type Finding, type Report, type Severity } from './types.js';
 
 export type FailOn = Severity | 'never';
+
+export interface CompareOptions {
+  failOn?: FailOn;
+  /** A comparison with an earlier report (compareReports), shown as its own section. */
+  comparison?: ReportComparison;
+  /** Only the new findings of the comparison decide the exit code. */
+  failOnNew?: boolean;
+}
+
+/** The exit code for these options: exitCode, or exitCodeForNew when failOnNew is set with a comparison. */
+export function resultCode(report: Report, options: CompareOptions = {}): number {
+  const failOn = options.failOn ?? 'error';
+  return options.failOnNew && options.comparison ? exitCodeForNew(report, options.comparison, failOn) : exitCode(report, failOn);
+}
 
 /** 0 ok, 1 findings at or above `failOn`, 2 no connection. */
 export function exitCode(report: Report, failOn: FailOn = 'error'): number {
@@ -29,6 +44,29 @@ function line(f: Finding): string {
   return f.subject ? `${f.subject}: ${f.message}` : f.message;
 }
 
+const signed = (n: number): string => (n > 0 ? '+' : n < 0 ? '-' : '+') + fmt(Math.abs(n));
+
+/** "154 -> 180 (+26)", "n/a -> 180" */
+function showDelta(d: Delta, unit = ''): string {
+  const side = (v: number | undefined): string => (v === undefined ? 'n/a' : fmt(v) + unit);
+  return `${side(d.previous)} -> ${side(d.current)}` + (d.delta !== undefined ? ` (${signed(d.delta)})` : '');
+}
+
+function countBySeverity(findings: Finding[]): string {
+  const n = (sev: Severity): number => findings.filter((f) => f.severity === sev).length;
+  const parts = [n('error') ? plural(n('error'), 'error') : '', n('warn') ? plural(n('warn'), 'warning') : '', n('info') ? `${n('info')} info` : ''];
+  return parts.filter(Boolean).join(', ') || 'none';
+}
+
+function verdict(report: Report, options: CompareOptions): string {
+  const failOn = options.failOn ?? 'error';
+  const scope = options.failOnNew && options.comparison ? `--fail-on ${failOn}, new findings only` : `--fail-on ${failOn}`;
+  const code = resultCode(report, options);
+  if (code === 2) return 'could not connect';
+  if (code === 1) return `fails at ${scope}`;
+  return options.failOnNew && options.comparison ? `passes at ${scope}` : 'passes';
+}
+
 interface Style {
   bold(s: string): string;
   dim(s: string): string;
@@ -43,9 +81,8 @@ function style(color: boolean): Style {
   return { bold: wrap(1, 22), dim: wrap(2, 22), red: wrap(31, 39), yellow: wrap(33, 39), cyan: wrap(36, 39), green: wrap(32, 39) };
 }
 
-export interface ConsoleOptions {
+export interface ConsoleOptions extends CompareOptions {
   color?: boolean;
-  failOn?: FailOn;
   /** Lines shown per check before "... and N more". Default 5. */
   maxPerCheck?: number;
 }
@@ -106,18 +143,36 @@ export function formatConsole(report: Report, options: ConsoleOptions = {}): str
     for (const t of report.cost.heaviest) out.push(`  ${t.name.padEnd(w)}  ${fmt(t.tokens).padStart(6)}`);
   }
 
+  const cmp = options.comparison;
+  if (cmp) {
+    out.push('', s.bold('Compared with the baseline') + s.dim(` (probed ${cmp.previous.startedAt} with mcp-probe ${cmp.previous.version})`));
+    if (cmp.previous.url !== report.url) out.push(label('URL') + `was ${cmp.previous.url}`);
+    out.push(label('Context') + showDelta(cmp.tokens) + ' tokens');
+    const names = [cmp.toolsAdded.length ? `added ${cmp.toolsAdded.join(', ')}` : '', cmp.toolsRemoved.length ? `removed ${cmp.toolsRemoved.join(', ')}` : ''].filter(Boolean);
+    out.push(label('Tools') + showDelta(cmp.toolCount) + (names.length ? `; ${names.join('; ')}` : ''));
+    out.push(label('Latency') + 'tools/list p50 ' + showDelta(cmp.toolsListP50, ' ms'));
+    const shown = 20;
+    for (const [title, findings] of [['New', cmp.newFindings], ['Gone', cmp.goneFindings]] as const) {
+      out.push(label(title) + countBySeverity(findings));
+      for (const f of findings.slice(0, shown)) {
+        const color = f.severity === 'error' ? s.red : f.severity === 'warn' ? s.yellow : s.cyan;
+        out.push(`    ${color(f.severity.padEnd(5))}  ${f.id}  ${line(f)}`);
+      }
+      if (findings.length > shown) out.push(s.dim(`    ... and ${findings.length - shown} more`));
+    }
+  }
+
   const { error, warn, info } = report.summary;
   const counts = `${plural(error, 'error')}, ${plural(warn, 'warning')}, ${info} info`;
-  const failOn = options.failOn ?? 'error';
-  const code = exitCode(report, failOn);
-  const verdict = code === 2 ? s.red('could not connect') : code === 1 ? s.red(`fails at --fail-on ${failOn}`) : s.green('passes');
-  out.push('', `${s.bold('Result')}  ${counts} in ${fmt(report.durationMs)} ms; ${verdict} (exit ${code})`);
+  const code = resultCode(report, options);
+  const text = verdict(report, options);
+  out.push('', `${s.bold('Result')}  ${counts} in ${fmt(report.durationMs)} ms; ${code === 0 ? s.green(text) : s.red(text)} (exit ${code})`);
   return out.join('\n') + '\n';
 }
 
 const cell = (v: string | number | undefined): string => String(v ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
 
-export function formatMarkdown(report: Report, options: { failOn?: FailOn } = {}): string {
+export function formatMarkdown(report: Report, options: CompareOptions = {}): string {
   const out: string[] = [];
   const srv = report.server;
   out.push('# mcp-probe report', '');
@@ -130,8 +185,29 @@ export function formatMarkdown(report: Report, options: { failOn?: FailOn } = {}
   }
   out.push(`- Tools: ${report.tools.count}${report.resources !== undefined ? `, resources: ${report.resources}` : ''}${report.prompts !== undefined ? `, prompts: ${report.prompts}` : ''}`);
   out.push(`- Probed: ${report.startedAt} in ${fmt(report.durationMs)} ms with mcp-probe ${report.probe.version}`);
-  const code = exitCode(report, options.failOn ?? 'error');
-  out.push(`- Result: ${report.summary.error} errors, ${report.summary.warn} warnings, ${report.summary.info} info (exit ${code})`, '');
+  const code = resultCode(report, options);
+  const scope = options.comparison && options.failOnNew ? `; ${verdict(report, options)}` : '';
+  out.push(`- Result: ${report.summary.error} errors, ${report.summary.warn} warnings, ${report.summary.info} info${scope} (exit ${code})`, '');
+
+  const cmp = options.comparison;
+  if (cmp) {
+    out.push('## Compared with the baseline', '');
+    out.push(`Baseline probed ${cmp.previous.startedAt} with mcp-probe ${cmp.previous.version}${cmp.previous.url !== report.url ? ` at ${cmp.previous.url}` : ''}.`, '');
+    out.push('| Figure | Baseline -> now |', '| --- | --- |');
+    out.push(`| Context tokens | ${showDelta(cmp.tokens)} |`);
+    out.push(`| Tools | ${showDelta(cmp.toolCount)} |`);
+    out.push(`| tools/list p50 | ${showDelta(cmp.toolsListP50, ' ms')} |`);
+    if (cmp.toolsAdded.length) out.push(`| Tools added | ${cell(cmp.toolsAdded.join(', '))} |`);
+    if (cmp.toolsRemoved.length) out.push(`| Tools removed | ${cell(cmp.toolsRemoved.join(', '))} |`);
+    out.push('');
+    for (const [title, findings] of [['New findings', cmp.newFindings], ['Gone findings', cmp.goneFindings]] as const) {
+      out.push(`### ${title}: ${countBySeverity(findings)}`, '');
+      if (findings.length === 0) continue;
+      out.push('| Severity | Check | Subject | Message |', '| --- | --- | --- | --- |');
+      for (const f of findings) out.push(`| ${f.severity} | \`${f.id}\` | ${cell(f.subject)} | ${cell(f.message)} |`);
+      out.push('');
+    }
+  }
 
   const groups = groupFindings(report.findings);
   if (groups.length > 0) {

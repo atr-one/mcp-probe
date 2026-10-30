@@ -2,8 +2,10 @@
 import { writeFile } from 'node:fs/promises';
 import { USAGE, UsageError, parseArgs } from './args.js';
 import { CHECKS } from './checks/registry.js';
+import { compareReports, loadReport } from './compare.js';
 import { probe } from './probe.js';
-import { exitCode, formatConsole, formatJson, formatMarkdown } from './report.js';
+import { formatConsole, formatJson, formatMarkdown, resultCode, type CompareOptions } from './report.js';
+import type { Report } from './types.js';
 import { VERSION } from './version.js';
 
 function useColor(flag: boolean | undefined): boolean {
@@ -49,6 +51,17 @@ async function main(argv: string[]): Promise<number> {
     return 2;
   }
 
+  // the baseline is read first: a wrong path should not cost a whole run to discover
+  let baseline: Report | undefined;
+  if (args.baseline) {
+    try {
+      baseline = await loadReport(args.baseline);
+    } catch (e) {
+      process.stderr.write(`mcp-probe: --baseline ${(e as Error).message}\n`);
+      return 2;
+    }
+  }
+
   const progress = process.stderr.isTTY;
   const report = await probe(args.url, {
     headers: args.headers,
@@ -61,10 +74,12 @@ async function main(argv: string[]): Promise<number> {
   });
   if (progress) process.stderr.write('\r\x1b[K');
 
-  process.stdout.write(formatConsole(report, { color: useColor(args.color), failOn: args.failOn }));
+  const outcome: CompareOptions = { failOn: args.failOn, failOnNew: args.failOnNew };
+  if (baseline) outcome.comparison = compareReports(baseline, report);
+  process.stdout.write(formatConsole(report, { ...outcome, color: useColor(args.color) }));
   if (args.json) await writeFile(args.json, formatJson(report), 'utf8');
-  if (args.md) await writeFile(args.md, formatMarkdown(report, { failOn: args.failOn }), 'utf8');
-  return exitCode(report, args.failOn);
+  if (args.md) await writeFile(args.md, formatMarkdown(report, outcome), 'utf8');
+  return resultCode(report, outcome);
 }
 
 main(process.argv.slice(2)).then(

@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 1,
+  "probe": {
+    "name": "mcp-probe",
+    "version": "0.1.0"
+  },
+  "url": "http://127.0.0.1:8765/mcp",
+  "startedAt": "2026-10-30T06:00:00.000Z",
+  "durationMs": 402,
+  "connected": true,
+  "tools": {
+    "count": 3,
+    "names": [
+      "get_weather",
+      "Search Docs!",
+      "get_forecast"
+    ]
+  },
+  "latency": [
+    {
+      "method": "initialize",
+      "count": 1,
+      "p50": 105,
+      "p95": 105,
+      "min": 105,
+      "max": 105
+    },
+    {
+      "method": "notifications/initialized",
+      "count": 1,
+      "p50": 10,
+      "p95": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "method": "ping",
+      "count": 1,
+      "p50": 10,
+      "p95": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "method": "tools/list",
+      "count": 4,
+      "p50": 22,
+      "p95": 25,
+      "min": 20,
+      "max": 25
+    },
+    {
+      "method": "tools/call",
+      "count": 5,
+      "p50": 15,
+      "p95": 16,
+      "min": 15,
+      "max": 16
+    },
+    {
+      "method": "mcp_probe/no_such_method",
+      "count": 1,
+      "p50": 15,
+      "p95": 15,
+      "min": 15,
+      "max": 15
+    },
+    {
+      "method": "resources/list",
+      "count": 1,
+      "p50": 16,
+      "p95": 16,
+      "min": 16,
+      "max": 16
+    },
+    {
+      "method": "prompts/list",
+      "count": 1,
+      "p50": 14,
+      "p95": 14,
+      "min": 14,
+      "max": 14
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "weather in Berlin",
+      "tool": "get_weather",
+      "passed": true,
+      "failures": [],
+      "ms": 15,
+      "isError": false
+    },
+    {
+      "name": "unknown city is an error result",
+      "tool": "get_weather",
+      "passed": true,
+      "failures": [],
+      "ms": 15,
+      "isError": true
+    },
+    {
+      "name": "Fahrenheit",
+      "tool": "get_weather",
+      "passed": true,
+      "failures": [],
+      "ms": 16,
+      "isError": false
+    }
+  ],
+  "findings": [
+    {
+      "id": "handshake.instructions",
+      "severity": "info",
+      "message": "Instructions: 49 chars, ~13 tokens",
+      "hint": "Instructions are added to the model context by many clients: keep them short and about how to use the tools together."
+    },
+    {
+      "id": "handshake.session",
+      "severity": "info",
+      "message": "Session id issued (36 chars); sent back on every request",
+      "hint": "Stateless servers need no session; stateful ones must accept the id back on every request."
+    },
+    {
+      "id": "tools.name_invalid",
+      "severity": "error",
+      "message": "\"Search Docs!\" does not match ^[a-zA-Z0-9_-]{1,64}$",
+      "hint": "Use letters, digits, _ and - only, at most 64 characters; several clients and model APIs reject other names.",
+      "subject": "Search Docs!"
+    },
+    {
+      "id": "tools.required_unknown",
+      "severity": "error",
+      "message": "required lists \"query\", not in properties",
+      "hint": "Every name in required must be declared in properties, or no call can satisfy the schema.",
+      "subject": "Search Docs!"
+    },
+    {
+      "id": "tools.output_schema_missing",
+      "severity": "info",
+      "message": "No outputSchema",
+      "hint": "An outputSchema (2025-06-18) lets clients validate and use structuredContent without parsing text.",
+      "subject": "Search Docs!"
+    },
+    {
+      "id": "tools.annotations_missing",
+      "severity": "info",
+      "message": "No annotations (readOnlyHint, destructiveHint, idempotentHint, openWorldHint)",
+      "hint": "Set annotations such as readOnlyHint, destructiveHint, idempotentHint and openWorldHint so clients can decide what needs confirmation.",
+      "subject": "Search Docs!"
+    },
+    {
+      "id": "tools.description_missing",
+      "severity": "error",
+      "message": "No description",
+      "hint": "The description is what the model reads to decide when to call the tool: say what it does, when to use it and what it returns.",
+      "subject": "get_forecast"
+    },
+    {
+      "id": "tools.annotations_missing",
+      "severity": "info",
+      "message": "No annotations (readOnlyHint, destructiveHint, idempotentHint, openWorldHint)",
+      "hint": "Set annotations such as readOnlyHint, destructiveHint, idempotentHint and openWorldHint so clients can decide what needs confirmation.",
+      "subject": "get_forecast"
+    },
+    {
+      "id": "cost.summary",
+      "severity": "info",
+      "message": "3 tools take ~231 tokens (612 chars as name + description + inputSchema; 940 chars on the wire), 2% of the 8,000-token budget; instructions add ~13",
+      "hint": "Every tool definition sits in the model context on every turn; trim descriptions and schemas that do not help the model choose or fill a call."
+    },
+    {
+      "id": "cost.heaviest",
+      "severity": "info",
+      "message": "get_weather ~104, get_forecast ~77, Search Docs! ~50",
+      "hint": "Start trimming with these."
+    },
+    {
+      "id": "errors.summary",
+      "severity": "info",
+      "message": "unknown tool -> JSON-RPC error -32602; get_weather without required arguments -> an isError result; unknown method -> JSON-RPC error -32601",
+      "hint": "Errors a client can read (JSON-RPC errors or isError results) let agents recover instead of hanging."
+    },
+    {
+      "id": "scenario.passed",
+      "severity": "info",
+      "message": "passed in 18 ms",
+      "hint": "Nothing to do.",
+      "subject": "weather in Berlin"
+    },
+    {
+      "id": "scenario.passed",
+      "severity": "info",
+      "message": "passed in 18 ms (error result, as expected)",
+      "hint": "Nothing to do.",
+      "subject": "unknown city is an error result"
+    },
+    {
+      "id": "scenario.passed",
+      "severity": "info",
+      "message": "passed in 18 ms",
+      "hint": "Nothing to do.",
+      "subject": "Fahrenheit"
+    },
+    {
+      "id": "resources.summary",
+      "severity": "info",
+      "message": "1 resource",
+      "hint": "Nothing to do."
+    },
+    {
+      "id": "resources.lint",
+      "severity": "info",
+      "message": "1 of 1 resources have no description: readme",
+      "hint": "Give every resource a unique uri, a name and a description."
+    },
+    {
+      "id": "prompts.summary",
+      "severity": "info",
+      "message": "1 prompt",
+      "hint": "Nothing to do."
+    },
+    {
+      "id": "prompts.lint",
+      "severity": "info",
+      "message": "1 prompt argument without description: weather_report.city",
+      "hint": "Give every prompt a unique name, a description and described arguments."
+    },
+    {
+      "id": "latency.summary",
+      "severity": "info",
+      "message": "initialize 105 ms; ping 10 ms; tools/list p50 22 ms, p95 25 ms (4 requests); mcp_probe/no_such_method 15 ms; resources/list 16 ms; prompts/list 14 ms",
+      "hint": "Protocol methods (initialize, tools/list, ping) should answer in well under a second."
+    }
+  ],
+  "summary": {
+    "error": 3,
+    "warn": 0,
+    "info": 16
+  },
+  "server": {
+    "sessionId": true,
+    "transport": "sse",
+    "capabilities": {
+      "tools": {
+        "listChanged": false
+      },
+      "resources": {},
+      "prompts": {}
+    },
+    "protocolVersion": "2025-06-18",
+    "name": "mock-weather",
+    "version": "1.0.0",
+    "instructionsChars": 49
+  },
+  "cost": {
+    "chars": 916,
+    "tokens": 231,
+    "wireChars": 1290,
+    "budget": 8000,
+    "instructionsTokens": 13,
+    "heaviest": [
+      {
+        "name": "get_weather",
+        "chars": 415,
+        "tokens": 104
+      },
+      {
+        "name": "get_forecast",
+        "chars": 304,
+        "tokens": 77
+      },
+      {
+        "name": "Search Docs!",
+        "chars": 197,
+        "tokens": 50
+      }
+    ],
+    "perTool": [
+      {
+        "name": "get_weather",
+        "chars": 415,
+        "tokens": 104
+      },
+      {
+        "name": "Search Docs!",
+        "chars": 197,
+        "tokens": 50
+      },
+      {
+        "name": "get_forecast",
+        "chars": 304,
+        "tokens": 77
+      }
+    ]
+  },
+  "resources": 1,
+  "prompts": 1
+}

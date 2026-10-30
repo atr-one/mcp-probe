@@ -57,6 +57,20 @@ jobs:
           test "${{ steps.probe.outputs.exit-code }}" = 0
           node -e "const r = require('./action-report.json'); if (!r.connected || r.tools.count !== 2 || r.scenarios.some((s) => !s.passed)) process.exit(1)"
           grep -q '^# mcp-probe report' action-report.md
+      - name: Run the action against its own report as the baseline
+        id: baseline
+        uses: ./
+        with:
+          url: http://127.0.0.1:8765/mcp
+          scenario: examples/probe.yaml
+          baseline: action-report.json
+          fail-on: warn
+          fail-on-new: true
+          md: baseline-report.md
+      - name: Check that the known findings did not fail it
+        run: |
+          test "${{ steps.baseline.outputs.exit-code }}" = 0
+          grep -q '^### New findings: none' baseline-report.md
       - name: Run the action where it must fail
         id: failing
         continue-on-error: true

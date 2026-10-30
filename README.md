@@ -29,6 +29,8 @@ Options:
       --json <file>           write the report as JSON
       --md <file>             write the report as Markdown
       --fail-on <level>       exit 1 on findings at or above: error (default), warn, info, never
+      --baseline <file>       compare with an earlier --json report: new and gone findings, deltas
+      --fail-on-new           with --baseline: only new findings at or above --fail-on fail the run
       --timeout <time>        per-request timeout: seconds, or with a unit (1500ms, 30s); default 20s
       --budget <tokens>       context budget for the tool catalog; default 8000
       --runs <n>              tools/list repetitions for latency; default 5
@@ -327,6 +329,8 @@ jobs:
 | `headers` | | HTTP headers, one `Name: value` per line; empty lines are skipped. |
 | `scenario` | | Scenario file, relative to the workspace. |
 | `fail-on` | `error` | Fail the step on findings at or above `error`, `warn`, `info`, or `never`. |
+| `baseline` | | An earlier JSON report to compare with; see [Compare with a previous report](#compare-with-a-previous-report). |
+| `fail-on-new` | `false` | With `baseline`: `true` fails the step only on new findings at or above `fail-on`. |
 | `json` | | Write the JSON report to this path. |
 | `md` | | Write the Markdown report to this path. The report goes to the job summary either way. |
 
@@ -363,6 +367,33 @@ jobs:
 ```
 
 The step fails when there are findings at or above `--fail-on` (exit 1) or when the server cannot be reached (exit 2). Use `--fail-on warn` once the warnings are fixed, to keep them fixed.
+
+## Compare with a previous report
+
+`--baseline previous.json` reads a report written earlier with `--json` and adds a section to the console and Markdown output: findings that are new, findings that are gone, and how the estimated context tokens, the tool count and the `tools/list` p50 latency changed.
+
+```text
+Compared with the baseline (probed 2026-10-29T06:00:00.000Z with mcp-probe 0.1.0)
+  Context   154 -> 231 (+77) tokens
+  Tools     2 -> 3 (+1); added get_forecast
+  Latency   tools/list p50 15 ms -> 22 ms (+7)
+  New       1 error, 1 info
+    error  tools.description_missing  get_forecast: No description
+    info   tools.annotations_missing  get_forecast: No annotations (readOnlyHint, destructiveHint, idempotentHint, openWorldHint)
+  Gone      2 warnings
+    warn   tools.description_short  Search Docs!: Description is 12 chars: "Search docs."
+    warn   tools.param_description  Search Docs!: 1 of 2 parameters without description: q
+```
+
+A finding is matched by its check id and subject (the tool, resource, prompt or scenario name), not by its message, because messages carry figures such as milliseconds that differ on every run. A finding whose message changed is therefore not reported as new. When a check fires several times for one subject, identical messages are paired first and the surplus counts as new or gone. A renamed tool shows its findings as gone under the old name and new under the new one.
+
+With `--fail-on-new` only new findings at or above `--fail-on` lead to exit 1. This suits a server that starts with known warnings: keep its report as the baseline, and CI fails when something new appears, not because of what is already there. Without `--fail-on-new` the comparison is shown and the exit code is the usual one. Exit 2 (no connection, or a baseline that cannot be read) does not change.
+
+```sh
+npx mcp-probe https://api.example.com/mcp --json today.json --baseline yesterday.json --fail-on warn --fail-on-new
+```
+
+In the GitHub Action the same is `baseline: yesterday.json` and `fail-on-new: true`; the baseline file has to be in the workspace (committed, or restored from an artifact or cache of an earlier run).
 
 ## Context cost
 
@@ -406,6 +437,17 @@ process.exitCode = exitCode(report, 'error');
 `probe()` does not throw for server-side problems; they become findings. It throws only for a URL that is not http(s). The report object (also what `--json` writes) has `connected`, `server`, `tools`, `cost`, `latency`, `scenarios`, `resources`, `prompts`, `findings` and `summary`; see `src/types.ts`.
 
 The parts are exported too: `McpClient` (the transport), `lintTools`, `catalogCost`, `validate` and `lintSchema` (the JSON Schema subset), `estimateTokens`, `parseSse`, `loadScenarios`, `formatMarkdown`, `formatJson` and `CHECKS` (every check id with its severity, title and hint).
+
+To compare two reports, `compareReports(previous, current)` returns the new and gone findings and the deltas; `loadReport(file)` reads a JSON report, and `exitCodeForNew(current, comparison, failOn)` is the exit code of `--fail-on-new`. Pass the comparison to `formatConsole` or `formatMarkdown` as `{ comparison, failOnNew }` to get the section described above.
+
+```ts
+import { compareReports, loadReport, probe } from 'mcp-probe';
+
+const previous = await loadReport('yesterday.json');
+const current = await probe('https://example.com/mcp');
+const { newFindings, goneFindings, tokens } = compareReports(previous, current);
+console.log(`${newFindings.length} new, ${goneFindings.length} gone, tokens ${tokens.delta ?? 'n/a'}`);
+```
 
 ## Development
 

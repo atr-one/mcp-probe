@@ -21,6 +21,14 @@ inputs:
     description: 'Fail the step on findings at or above: error, warn, info or never'
     required: false
     default: error
+  baseline:
+    description: An earlier JSON report to compare with (new and gone findings, deltas)
+    required: false
+    default: ''
+  fail-on-new:
+    description: With baseline, fail only on new findings at or above fail-on (true or false)
+    required: false
+    default: 'false'
   json:
     description: Write the JSON report to this path
     required: false
@@ -58,6 +66,8 @@ runs:
         INPUT_HEADERS: ${{ inputs.headers }}
         INPUT_SCENARIO: ${{ inputs.scenario }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_BASELINE: ${{ inputs.baseline }}
+        INPUT_FAIL_ON_NEW: ${{ inputs.fail-on-new }}
         INPUT_JSON: ${{ inputs.json }}
         INPUT_MD: ${{ inputs.md }}
       run: |
@@ -68,6 +78,8 @@ runs:
           args+=(--header "$line")
         done <<< "$INPUT_HEADERS"
         [ -n "$INPUT_SCENARIO" ] && args+=(--scenario "$INPUT_SCENARIO")
+        [ -n "$INPUT_BASELINE" ] && args+=(--baseline "$INPUT_BASELINE")
+        [ "$INPUT_FAIL_ON_NEW" = true ] && args+=(--fail-on-new)
         [ -n "$INPUT_JSON" ] && args+=(--json "$INPUT_JSON")
         md="${INPUT_MD:-$RUNNER_TEMP/mcp-probe-report.md}"
         args+=(--md "$md")

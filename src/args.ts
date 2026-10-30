@@ -7,6 +7,8 @@ export interface CliArgs {
   scenario?: string;
   json?: string;
   md?: string;
+  baseline?: string;
+  failOnNew: boolean;
   failOn: FailOn;
   timeoutMs: number;
   budget: number;
@@ -28,6 +30,8 @@ Options:
       --json <file>           write the report as JSON
       --md <file>             write the report as Markdown
       --fail-on <level>       exit 1 on findings at or above: error (default), warn, info, never
+      --baseline <file>       compare with an earlier --json report: new and gone findings, deltas
+      --fail-on-new           with --baseline: only new findings at or above --fail-on fail the run
       --timeout <time>        per-request timeout: seconds, or with a unit (1500ms, 30s); default 20s
       --budget <tokens>       context budget for the tool catalog; default 8000
       --runs <n>              tools/list repetitions for latency; default 5
@@ -68,7 +72,7 @@ function positiveInt(flag: string, text: string, min: number): number {
 }
 
 export function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { headers: {}, failOn: 'error', timeoutMs: 20_000, budget: 8_000, runs: 5, skip: [], help: false, version: false, listChecks: false };
+  const args: CliArgs = { headers: {}, failOnNew: false, failOn: 'error', timeoutMs: 20_000, budget: 8_000, runs: 5, skip: [], help: false, version: false, listChecks: false };
   const rest = [...argv];
   const value = (flag: string, inline: string | undefined): string => {
     if (inline !== undefined) return inline;
@@ -99,6 +103,8 @@ export function parseArgs(argv: string[]): CliArgs {
       case '--scenario': args.scenario = value(flag, inline); break;
       case '--json': args.json = value(flag, inline); break;
       case '--md': args.md = value(flag, inline); break;
+      case '--baseline': args.baseline = value(flag, inline); break;
+      case '--fail-on-new': args.failOnNew = true; break;
       case '--fail-on': {
         const v = value(flag, inline);
         if (!['error', 'warn', 'info', 'never'].includes(v)) throw new UsageError(`--fail-on: expected error, warn, info or never, got "${v}"`);
@@ -128,5 +134,6 @@ export function parseArgs(argv: string[]): CliArgs {
         args.url = raw;
     }
   }
+  if (args.failOnNew && !args.baseline) throw new UsageError('--fail-on-new needs --baseline <file>');
   return args;
 }
