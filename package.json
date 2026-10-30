@@ -1,0 +1,64 @@
+{
+  "name": "mcp-probe",
+  "version": "0.1.0",
+  "description": "Audit a remote MCP server over Streamable HTTP: handshake, tool catalog lint, context cost, latency, scenarios and error contract.",
+  "license": "MIT",
+  "author": "Dmitrii Maslennikov",
+  "type": "module",
+  "bin": {
+    "mcp-probe": "dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atr-one/mcp-probe.git"
+  },
+  "homepage": "https://github.com/atr-one/mcp-probe#readme",
+  "bugs": {
+    "url": "https://github.com/atr-one/mcp-probe/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "streamable-http",
+    "json-rpc",
+    "lint",
+    "audit",
+    "cli",
+    "ci"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
+    "test": "vitest run",
+    "lint": "tsc --noEmit",
+    "mock": "node test/fixtures/mock-server.mjs",
+    "prepublishOnly": "npm run lint && npm run build && npm test"
+  },
+  "dependencies": {
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.130",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.5",
+    "vitest": "^3.2.7"
+  }
+}

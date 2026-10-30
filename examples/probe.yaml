@@ -1,0 +1,22 @@
+# Scenarios for mcp-probe. These match the test server (`npm run mock`);
+# write your own for your server and pass it with --scenario.
+scenarios:
+  - name: weather in Berlin
+    tool: get_weather
+    arguments: { city: Berlin }
+    expect:
+      isError: false
+      contains: Berlin
+      maxMs: 2000
+      # structuredContent is validated against the tool's outputSchema by default;
+      # set schemaValid: false to turn that off
+
+  - name: unknown city is an error result
+    tool: get_weather
+    arguments: { city: Atlantis }
+    expect: { isError: true, contains: Unknown city }
+
+  - name: Fahrenheit
+    tool: get_weather
+    arguments: { city: Oslo, units: f }
+    expect: { contains: "49F" }
