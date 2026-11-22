@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.3.0 - 2026-11-23
 
 - Reports mask credentials in the probed URL: user info and the values of secret-looking query parameters (`api_key`, `token`, `access_token`, `secret`, `password`, `auth`, `signature`, `session` and similar) become `***` in the console, JSON and Markdown reports and so in the job summary of the GitHub Action. The server still gets the URL as given. Library: `redactUrl(url)`.
 - New check `http.redirect` (warn): `initialize` was answered with a redirect. The finding names the final URL and says when it is on another origin, where the headers given with `--header` (all but `Authorization`) were sent too.

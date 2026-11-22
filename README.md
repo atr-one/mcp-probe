@@ -66,7 +66,7 @@ Real output against the test server in this repository (`npm run mock`, which an
 
 ```text
 $ npx mcp-probe http://127.0.0.1:8765/mcp --scenario examples/probe.yaml
-mcp-probe 0.2.0  http://127.0.0.1:8765/mcp
+mcp-probe 0.3.0  http://127.0.0.1:8765/mcp
 
   Server    mock-weather 1.0.0 (protocol 2025-06-18, SSE answers, session id)
   Tools     2, ~154 tokens in context (budget 8,000)
@@ -316,7 +316,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7   # only needed for a scenario file from the repository
-      - uses: atr-one/mcp-probe@v0.2.0
+      - uses: atr-one/mcp-probe@v0.3.0
         with:
           url: https://staging.example.com/mcp
           headers: |
@@ -359,7 +359,7 @@ jobs:
           node-version: 22
       - name: Probe the MCP server
         run: >
-          npx --yes github:atr-one/mcp-probe#v0.2.0 https://staging.example.com/mcp
+          npx --yes github:atr-one/mcp-probe#v0.3.0 https://staging.example.com/mcp
           --header "Authorization: Bearer ${{ secrets.MCP_TOKEN }}"
           --scenario probe.yaml
           --fail-on error
