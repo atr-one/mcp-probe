@@ -1,4 +1,5 @@
 import { PROTOCOL_VERSION, TransportError, type RpcResult } from '../client.js';
+import { redactUrl } from '../redact.js';
 import { estimateTokens } from '../tokens.js';
 import { VERSION } from '../version.js';
 import { call, describe, isObject, snippet, type ProbeContext } from './context.js';
@@ -32,6 +33,13 @@ export async function runHandshake(ctx: ProbeContext): Promise<InitResult | unde
     return undefined;
   }
   report.connected = true;
+
+  if (r.redirectedTo) {
+    const crossOrigin = new URL(r.redirectedTo).origin !== new URL(client.url).origin;
+    ctx.add(finding('http.redirect', `initialize was redirected to ${redactUrl(r.redirectedTo)}${crossOrigin
+      ? ' on another origin; headers given with --header (all but Authorization) were sent there too'
+      : ''}`));
+  }
 
   if (r.status === 401) {
     await authDiscovery(ctx, r);

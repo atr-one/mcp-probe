@@ -52,6 +52,7 @@ const CITIES = { berlin: 21.5, lisbon: 24, oslo: 9.5 };
  *   pageSize: tools per tools/list page (default 1, so pagination is exercised)
  *   crashOnUnknownTool: answer HTTP 500 to a tools/call of an unknown tool
  *   badWeatherShape: get_weather returns temperature as a string (breaks its outputSchema)
+ *   (any path) /old-mcp answers 307 with Location /mcp, so the redirect check can be exercised
  */
 export function createMockServer(options = {}) {
   const pageSize = options.pageSize ?? 1;
@@ -120,7 +121,9 @@ export function createMockServer(options = {}) {
       if (req.url && req.url.startsWith('/.well-known/oauth-protected-resource')) {
         return send(200, { resource: `http://${req.headers.host}/mcp`, authorization_servers: [`http://${req.headers.host}/auth`] });
       }
-      if (req.url !== '/mcp') return send(404, { error: 'not found' });
+      const path = (req.url ?? '').split('?')[0];
+      if (path === '/old-mcp') return send(307, undefined, { location: '/mcp' });
+      if (path !== '/mcp') return send(404, { error: 'not found' });
       if (req.method === 'DELETE') {
         sessions.delete(req.headers['mcp-session-id']);
         return send(204);

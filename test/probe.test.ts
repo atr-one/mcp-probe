@@ -173,3 +173,30 @@ describe('probe against the mock server', () => {
     expect(md).toContain('| weather in Berlin | get_weather | pass |');
   });
 });
+
+describe('what the report shows of the URL', () => {
+  it('keeps an API key in the query string out of the report but sends it to the server', async () => {
+    const { mock, url } = await start();
+    const report = await probe(`${url}?api_key=sk-very-secret&region=eu`, { latencyRuns: 0, skip: ['errors'] });
+    expect(report.connected).toBe(true);
+    expect(report.url).toBe(`${url}?api_key=***&region=eu`);
+    const all = JSON.stringify(report) + formatConsole(report, { color: false }) + formatMarkdown(report);
+    expect(all).not.toContain('sk-very-secret');
+    expect(mock.requests.length).toBeGreaterThan(0);
+  });
+
+  it('reports a redirect of initialize', async () => {
+    const { url } = await start();
+    const report = await probe(url.replace(/\/mcp$/, '/old-mcp'), { latencyRuns: 0, skip: ['errors'] });
+    const redirect = report.findings.find((f) => f.id === 'http.redirect');
+    expect(redirect?.severity).toBe('warn');
+    expect(redirect?.message).toBe(`initialize was redirected to ${url}`);
+    expect(report.server?.name).toBe('mock-weather');
+  });
+
+  it('reports no redirect when there is none', async () => {
+    const { url } = await start();
+    const report = await probe(url, { latencyRuns: 0, skip: ['errors'] });
+    expect(ids(report)).not.toContain('http.redirect');
+  });
+});

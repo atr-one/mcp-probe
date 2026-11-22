@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- Reports mask credentials in the probed URL: user info and the values of secret-looking query parameters (`api_key`, `token`, `access_token`, `secret`, `password`, `auth`, `signature`, `session` and similar) become `***` in the console, JSON and Markdown reports and so in the job summary of the GitHub Action. The server still gets the URL as given. Library: `redactUrl(url)`.
+- New check `http.redirect` (warn): `initialize` was answered with a redirect. The finding names the final URL and says when it is on another origin, where the headers given with `--header` (all but `Authorization`) were sent too.
+- Node.js 20 or newer (`engines`); Node.js 18 is past its end of life and the test tooling no longer runs on it. CI tests Node.js 20, 22 and 24.
+- Dev dependencies: vitest 4.1.12 (fixes the advisories in vitest 3 and tinypool that `npm audit` reported), @types/node 20. The runtime dependency is unchanged.
+- CI and the GitHub Action use `actions/checkout@v7` and `actions/setup-node@v7` (Node 24 runtime); the CI workflow token is read-only.
+
 ## 0.2.0 - 2026-10-30
 
 - GitHub Action: `action.yml` at the repository root, used as `uses: atr-one/mcp-probe@v0.2.0`. Inputs `url`, `headers` (one `Name: value` per line), `scenario`, `fail-on`, `baseline`, `fail-on-new`, `json`, `md`; output `exit-code`. It builds mcp-probe from the tagged source and appends the Markdown report to the job summary. CI runs the action against the mock server.

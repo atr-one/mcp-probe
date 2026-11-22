@@ -8,6 +8,7 @@ export { catalogCost } from './checks/cost.js';
 export { loadScenarios, parseScenarios } from './checks/scenarios.js';
 export { validate, lintSchema } from './schema.js';
 export { estimateTokens } from './tokens.js';
+export { redactUrl } from './redact.js';
 export { parseSse, SseParser, type SseEvent } from './sse.js';
 export { VERSION } from './version.js';
 export { SEVERITY_RANK, CHECK_GROUPS } from './types.js';

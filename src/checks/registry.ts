@@ -17,6 +17,7 @@ export const CHECKS = {
   'auth.metadata_missing': { severity: 'warn', title: '401 without usable OAuth discovery', hint: 'Answer 401 with WWW-Authenticate: Bearer resource_metadata="https://host/.well-known/oauth-protected-resource" and serve that document (RFC 9728), or OAuth-capable clients cannot sign in.' },
   'http.forbidden': { severity: 'error', title: 'initialize answered 403', hint: 'A WAF or bot protection (Cloudflare, Akamai) often blocks non-browser clients; exempt the MCP path for API clients, or send the headers the server expects.' },
   'http.method_not_allowed': { severity: 'error', title: 'POST to the endpoint answered 405', hint: 'Streamable HTTP clients POST JSON-RPC to the endpoint URL. Check the path (often /mcp) and whether the server only speaks the old HTTP+SSE transport (2024-11-05).' },
+  'http.redirect': { severity: 'warn', title: 'initialize was answered with a redirect', hint: 'Give clients the final URL. A 301 or 302 turns the POST into a GET in many HTTP clients, some MCP clients do not follow redirects at all, and a redirect to another origin takes the request headers along.' },
   'http.status': { severity: 'error', title: 'initialize answered another non-2xx status', hint: 'Answer initialize with HTTP 200 and a JSON-RPC response.' },
   'http.content_type': { severity: 'error', title: 'Response Content-Type is neither application/json nor text/event-stream', hint: 'Set Content-Type: application/json (or text/event-stream for a streamed answer); clients dispatch on it.' },
 

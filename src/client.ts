@@ -27,6 +27,8 @@ export interface RpcResult {
   body?: string;
   /** Other messages (notifications, server requests) seen in an SSE stream before the response. */
   extraMessages: number;
+  /** The final URL when fetch followed one or more redirects. */
+  redirectedTo?: string;
 }
 
 export class TransportError extends Error {
@@ -129,6 +131,7 @@ export class McpClient {
       }
       const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
       const out: RpcResult = { method, status: res.status, contentType, headers: res.headers, ms: 0, extraMessages: 0 };
+      if (res.redirected && res.url) out.redirectedTo = res.url;
       if (method === 'initialize' && res.ok) {
         const sid = res.headers.get('mcp-session-id');
         if (sid) this.sessionId = sid;

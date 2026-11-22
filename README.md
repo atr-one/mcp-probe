@@ -6,7 +6,7 @@ It has one runtime dependency (`yaml`) and does not use the MCP SDK: the JSON-RP
 
 ## Install and run
 
-Requires Node.js 18 or newer.
+Requires Node.js 20 or newer.
 
 ```sh
 npx github:atr-one/mcp-probe https://example.com/mcp
@@ -129,6 +129,8 @@ Result  2 errors, 2 warnings, 15 info in 388 ms; fails at --fail-on error (exit 
 
 When a check fires for many tools, the console shows the first five and names the rest; the JSON and Markdown reports contain every finding.
 
+Reports show the URL with credentials masked: a user name and password, and the values of query parameters whose names look secret (`api_key`, `token`, `access_token`, `secret`, `password`, `auth`, `signature`, `session` and similar), become `***`. Servers that take the API key in the query string can be probed in CI without the key showing up in the log, the job summary or the report files. The server still gets the URL as given. Headers passed with `--header` never appear in a report.
+
 ## What it checks
 
 Every finding has a stable id, a severity (`error`, `warn` or `info`), a message and a hint on how to fix it. `mcp-probe --list-checks` prints the same list.
@@ -144,6 +146,7 @@ mcp-probe sends `initialize` with `protocolVersion: "2025-06-18"`, empty client 
 | `auth.metadata` | info | After a 401: the OAuth protected resource metadata (RFC 9728) that clients would follow, and its authorization servers. |
 | `auth.metadata_missing` | warn | A 401 without `resource_metadata` in `WWW-Authenticate`, or no metadata document at all. |
 | `http.forbidden` | error | 403, with the `server` header and Cloudflare ray id when present (bot protection is the usual cause). |
+| `http.redirect` | warn | `initialize` was redirected (the report names the final URL, and says when it is on another origin, where the request headers went too). |
 | `http.method_not_allowed` | error | 405 to POST: wrong path, or an old HTTP+SSE-only server. |
 | `http.status` | error | Any other non-2xx answer to `initialize`. |
 | `http.content_type` | error | A 2xx answer that is neither `application/json` nor `text/event-stream`. |
@@ -312,7 +315,7 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4   # only needed for a scenario file from the repository
+      - uses: actions/checkout@v7   # only needed for a scenario file from the repository
       - uses: atr-one/mcp-probe@v0.2.0
         with:
           url: https://staging.example.com/mcp
@@ -350,8 +353,8 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Probe the MCP server
@@ -436,7 +439,7 @@ process.exitCode = exitCode(report, 'error');
 
 `probe()` does not throw for server-side problems; they become findings. It throws only for a URL that is not http(s). The report object (also what `--json` writes) has `schemaVersion`, `connected`, `server`, `tools`, `cost`, `latency`, `scenarios`, `resources`, `prompts`, `findings` and `summary`; see `src/types.ts` and the JSON report section below.
 
-The parts are exported too: `McpClient` (the transport), `lintTools`, `catalogCost`, `validate` and `lintSchema` (the JSON Schema subset), `estimateTokens`, `parseSse`, `loadScenarios`, `formatMarkdown`, `formatJson` and `CHECKS` (every check id with its severity, title and hint).
+The parts are exported too: `McpClient` (the transport), `lintTools`, `catalogCost`, `validate` and `lintSchema` (the JSON Schema subset), `estimateTokens`, `redactUrl`, `parseSse`, `loadScenarios`, `formatMarkdown`, `formatJson` and `CHECKS` (every check id with its severity, title and hint).
 
 To compare two reports, `compareReports(previous, current)` returns the new and gone findings and the deltas; `loadReport(file)` reads a JSON report, and `exitCodeForNew(current, comparison, failOn)` is the exit code of `--fail-on-new`. Pass the comparison to `formatConsole` or `formatMarkdown` as `{ comparison, failOnNew }` to get the section described above.
 

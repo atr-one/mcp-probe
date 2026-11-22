@@ -1,4 +1,5 @@
 import { McpClient } from './client.js';
+import { redactUrl } from './redact.js';
 import { catalogCost, costFindings } from './checks/cost.js';
 import type { ProbeContext, ResolvedOptions } from './checks/context.js';
 import { runErrorContract } from './checks/errors.js';
@@ -55,7 +56,8 @@ export async function probe(url: string, options: ProbeOptions = {}): Promise<Re
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new TypeError(`Not an http(s) URL: ${url}`);
   const opts = resolve(options);
   const started = performance.now();
-  const report = emptyReport(url);
+  // the client gets the URL as given; the report, which ends up in logs and job summaries, gets it redacted
+  const report = emptyReport(redactUrl(url));
   const clientOptions: ConstructorParameters<typeof McpClient>[1] = { headers: opts.headers, timeoutMs: opts.timeoutMs };
   if (opts.fetch) clientOptions.fetch = opts.fetch;
   const client = new McpClient(url, clientOptions);
